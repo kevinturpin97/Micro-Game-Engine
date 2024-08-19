@@ -2,7 +2,7 @@ import { Cube } from "./cube.js";
 import { Entity } from "./entity.js";
 
 class Controller {
-  #cubeWorker = Worker;
+  #vectorWorker = Worker;
   #entities = {
     cubes: []
   };
@@ -12,7 +12,7 @@ class Controller {
   #context = CanvasRenderingContext2D;
 
   constructor() {
-    this.#cubeWorker = new Worker('workers/cube.js');
+    this.#vectorWorker = new Worker('workers/vectorWorker.js');
   }
 
   init() {
@@ -20,35 +20,81 @@ class Controller {
       throw new Error('Context not set');
     }
 
-    this.#cubeWorker.onmessage = (event) => {
-      const { id, vertices, origin } = event.data;
-      const entity = this.#entities.cubes.find((entity) => entity.getId() === id);
+    this.#vectorWorker.onmessage = (event) => {
+      const { type, action, entities } = event.data;
+      const needRender = {
+        cubes: []
+      };
 
-      if (!entity) { return; }
+      for (const entity of entities) {
+        const { id, vertices, origin, position, rotation } = entity;
+        const entityToUpdate = this.#entities[type].find((entity) => entity.getId() === id);
 
-      this.#context.clearRect(0, 0, this.#context.canvas.width, this.#context.canvas.height);
-      entity.drawCube(vertices, origin, this.#context);
+        if (!entityToUpdate) {
+          console.warn('Entity not found:', id);
+
+          continue;
+        }
+
+        switch (action) {
+          case 'update_transform':
+            entityToUpdate.setPosition(position);
+            entityToUpdate.setRotation(rotation);
+
+            needRender[type].push(entityToUpdate);
+            continue;
+
+          case 'update_render':
+            // TODO: unique function for each entity type
+            entityToUpdate.draw(vertices, origin, this.#context);
+            continue;
+
+          default:
+            continue;
+        }
+      }
+
+      if (needRender.cubes.length > 0) {
+        const cubeDatas = needRender.cubes
+          .map((entity) => {
+            return {
+              id: entity.getId(),
+              size: entity.getSize(),
+              position: entity.getPosition(),
+              rotation: entity.getRotation(),
+              origin: { x: 0, y: 0, z: 0 }
+            };
+          });
+
+        this.#vectorWorker.postMessage({
+          type: 'cubes',
+          action: 'update_render',
+          entities: cubeDatas
+        });
+      }
     };
 
     this.#instantiate();
   }
 
   #instantiate() {
-    const count = 1;
-    
+    const count = 100;
+
     let sizeX, sizeY, sizeZ, posX, posY, posZ, rotX, rotY, rotZ;
 
-    sizeX = sizeY = sizeZ = 10;
+    sizeX = sizeY = sizeZ = 5;
     posX = posY = posZ = rotX = rotY = rotZ = 0;
+
+    posX = (sizeX * sizeY * (sizeZ / 2));
+    posY = (sizeY * sizeZ * (sizeX / 2));
 
     for (let i = 1; i < (count + 1); i++) {
       const color = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
       const cube = new Cube(
-        this.#cubeWorker,
         { x: sizeX, y: sizeY, z: sizeZ },
-        { x: posX + 100, y: posY + 100, z: posZ },
+        { x: posX, y: posY, z: posZ },
         { x: rotX, y: rotY, z: rotZ },
-        { x: 5, y: 0, z: 0 },
+        { x: 0, y: 0, z: 0 },
         { x: 1, y: 1, z: -1 },
         color
       );
@@ -56,7 +102,7 @@ class Controller {
       posX += (sizeX * sizeY * (sizeZ / 2));
 
       if (i % 10 === 0) {
-        posX = 0;
+        posX = (sizeX * sizeY * (sizeZ / 2));
         posY += (sizeY * sizeZ * (sizeX / 2));
       }
 
@@ -93,7 +139,7 @@ class Controller {
     } else {
       entity.setId(this.#entities.cubes.length);
     }
-    
+
     this.#entities.cubes.push(entity);
 
     console.log('New entity:', entity.getId());
@@ -122,25 +168,55 @@ class Controller {
     return this.#entities;
   }
 
-  toUpdate() {
+  instantiate() {
     const cubes = this.#entities.cubes;
-    
-    cubes.forEach((entity) => {
-      if (!entity || !entity.needUpdate()) { return; }
+    const cubeDatas = cubes
+      .map((entity) => {
+        if (!entity || entity.isInstantiated()) { return; }
 
-      const id = entity.getId();
-      const position = entity.getPosition();
-      const rotation = entity.getRotation();
-      const size = entity.getSize();
-      const origin = { x: 0, y: 0, z: 0 };
+        entity.instantiate();
 
-      this.#cubeWorker.postMessage({
-        id,
-        size,
-        position,
-        rotation,
-        origin
-      });
+        return {
+          id: entity.getId(),
+          size: entity.getSize(),
+          position: entity.getPosition(),
+          rotation: entity.getRotation(),
+          origin: { x: 0, y: 0, z: 0 }
+        };
+      })
+      .filter((entity) => entity);
+
+    this.#vectorWorker.postMessage({
+      type: 'cubes',
+      action: 'update_render',
+      entities: cubeDatas
+    });
+  }
+
+  onUpdate(deltaTime) {
+    const cubes = this.#entities.cubes;
+    const cubeDatas = cubes
+      .map((entity) => {
+        if (!entity || !entity.needUpdate()) { return; }
+
+        return {
+          id: entity.getId(),
+          size: entity.getSize(),
+          position: entity.getPosition(),
+          rotation: entity.getRotation(),
+          velocity: entity.getVelocity(),
+          angular: entity.getAngular(),
+          deltaTime: deltaTime
+        };
+      })
+      .filter((entity) => entity);
+
+    if (cubeDatas.length === 0) { return; }
+
+    this.#vectorWorker.postMessage({
+      type: 'cubes',
+      action: 'update_transform',
+      entities: cubeDatas
     });
   }
 }

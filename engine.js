@@ -25,6 +25,8 @@ class Engine {
         console.log('Engine initialized');
     }
 
+    // TODO: add logic to instantiate controller before first Renderer call
+
     // get every entities that need to be updated
     // send them to the renderer
     launch() {
@@ -32,7 +34,8 @@ class Engine {
             throw new Error('Engine not initialized');
         }
 
-        this.#renderer.toUpdate(this.#controller.getEntities());
+        this.#controller.instantiate();
+        this.#renderer.subscribe({ controller: (dT) => this.#controller.onUpdate(dT) });
 
         console.log('Engine launched');
         console.log('Entities:', this.#controller.getEntities());

@@ -19,8 +19,8 @@ class Cube extends Entity {
      * @param {Vector3} angular The angular velocity of the cube
      * @param {string} color The color of the cube
         */
-    constructor(worker, size, position, rotation, velocity, angular, color = '#000000') {
-        super(worker, size, position, rotation, velocity, angular);
+    constructor(size, position, rotation, velocity, angular, color = '#000000') {
+        super(size, position, rotation, velocity, angular);
 
         this.#color = color;
     }
@@ -43,27 +43,7 @@ class Cube extends Entity {
         return this;
     }
 
-    // FEATURE: get exact number of sides needed to be drawn by checking the rotation of the cube (reduce processing time)
-    draw() {
-        if (!this.needUpdate()) { return this; }
-
-        const id = this.getId();
-        const position = this.getPosition();
-        const rotation = this.getRotation();
-        const size = this.getSize();
-        
-        this.getProcessing().postMessage({
-            id: id,
-            size: size,
-            position: position,
-            rotation: rotation,
-            origin: { x: 100, y: 100, z: 0 }
-        });
-
-        return this;
-    }
-
-    drawCube(vertices, origin, ctx) {
+    draw(vertices, origin, ctx) {
         // this.addToClearQueue(vertices, origin);
         // if (!this.isInstantiated()) {
         //     this.instantiate();
@@ -142,7 +122,7 @@ class Cube extends Entity {
         return;
 
         // debug:
-        this.#clearQueued.push({vertices: vertices, origin: origin});
+        this.#clearQueued.push({ vertices: vertices, origin: origin });
 
         while (this.#clearQueued.length > 1) {
             this.#clear(this.#clearQueued[0].vertices, this.#clearQueued[0].origin);
@@ -151,11 +131,11 @@ class Cube extends Entity {
 
         this.setVisible(false);
     }
-        
+
     #clear(vertices, origin) {
         const ctx = this._getCtx();
         const margin = 10;
-        
+
         ctx.beginPath();
         ctx.fillStyle = '#ffffff';
 

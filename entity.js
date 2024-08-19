@@ -43,11 +43,9 @@ class Entity {
         z: 0
     };
     #isVisible = false;
-    #processing = Worker;
     #isInstantiated = false;
 
     /**
-     * @param {Worker} worker
      * @param {Vector3} size
      * @param {Vector3} position
      * @param {Vector3} rotation
@@ -55,17 +53,12 @@ class Entity {
      * @param {Vector3} angular
      */
     constructor(
-        worker = null,
         size = { x: 0, y: 0, z: 0 },
         position = { x: 0, y: 0, z: 0 },
         rotation = { x: 0, y: 0, z: 0 },
         velocity = { x: 0, y: 0, z: 0 },
         angular = { x: 0, y: 0, z: 0 }
     ) {
-        if (!(worker instanceof Worker)) {
-            throw new Error('Invalid worker');
-        }
-
         const entry = [size, position, rotation, velocity, angular];
 
         entry.forEach((entry) => {
@@ -83,7 +76,6 @@ class Entity {
         this.#rotation = rotation;
         this.#velocity = velocity;
         this.#angular = angular;
-        this.#processing = worker;
     }
 
     /**
@@ -138,6 +130,8 @@ class Entity {
      */
     setPosition(position) {
         if (this.#validateCoordinates(position)) {
+            this.#setOldPosition(this.#position);
+
             this.#position = position;
         }
 
@@ -151,6 +145,8 @@ class Entity {
      */
     setRotation(rotation) {
         if (this.#validateCoordinates(rotation)) {
+            this.#setOldRotation(this.#rotation);
+
             this.#rotation = rotation;
         }
 
@@ -197,10 +193,8 @@ class Entity {
     /**
      * @param {Vector3} oldPosition
      */
-    setOldPosition(oldPosition) {
-        if (this.#validateCoordinates(oldPosition)) {
-            this.#oldPosition = oldPosition;
-        }
+    #setOldPosition(oldPosition) {
+        this.#oldPosition = oldPosition;
 
         return this;
     }
@@ -208,10 +202,8 @@ class Entity {
     /**
      * @param {Vector3} oldRotation
      */
-    setOldRotation(oldRotation) {
-        if (this.#validateCoordinates(oldRotation)) {
-            this.#oldRotation = oldRotation;
-        }
+    #setOldRotation(oldRotation) {
+        this.#oldRotation = oldRotation;
 
         return this;
     }
@@ -299,20 +291,14 @@ class Entity {
         return this.#isInstantiated;
     }
 
-    /**
-     * @returns {Worker}
-     */
-    getProcessing() {
-        return this.#processing;
-    }
-
     needUpdate() {
+        return true;
         if (!this.#isInstantiated) { return true; }
 
-        const { x : refPosX, y : refPosY, z : refPosZ } = this.#oldPosition;
-        const { x : curPosX, y : curPosY, z : curPosZ } = this.#position;
-        const { x : refRotX, y : refRotY, z : refRotZ } = this.#oldRotation;
-        const { x : curRotX, y : curRotY, z : curRotZ } = this.#rotation;
+        const { x: refPosX, y: refPosY, z: refPosZ } = this.#oldPosition;
+        const { x: curPosX, y: curPosY, z: curPosZ } = this.#position;
+        const { x: refRotX, y: refRotY, z: refRotZ } = this.#oldRotation;
+        const { x: curRotX, y: curRotY, z: curRotZ } = this.#rotation;
 
         return refPosX !== curPosX || refPosY !== curPosY || refPosZ !== curPosZ || refRotX !== curRotX || refRotY !== curRotY || refRotZ !== curRotZ;
     }
