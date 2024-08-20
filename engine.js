@@ -34,8 +34,9 @@ class Engine {
             throw new Error('Engine not initialized');
         }
 
+        const debug = document.getElementById('fps');
         this.#controller.instantiate();
-        this.#renderer.subscribe({ controller: (dT) => this.#controller.onUpdate(dT) });
+        this.#renderer.subscribe({ controller: (dT) => this.#controller.onUpdate(dT), debug: debug });
 
         console.log('Engine launched');
         console.log('Entities:', this.#controller.getEntities());

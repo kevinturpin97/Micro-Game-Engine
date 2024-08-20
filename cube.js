@@ -1,4 +1,5 @@
 import { Entity } from "./entity.js";
+import { Utilities } from "./utilities.js";
 
 /**
  * @typedef {Object} Vector3
@@ -44,156 +45,59 @@ class Cube extends Entity {
     }
 
     draw(vertices, origin, ctx) {
-        // this.addToClearQueue(vertices, origin);
-        // if (!this.isInstantiated()) {
-        //     this.instantiate();
-        // }
+        this.addToClearQueue(vertices, origin, ctx);
 
         ctx.beginPath();
-        // front face
-        ctx.moveTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.lineTo(origin.x + vertices[1].x, origin.y + vertices[1].y);
-        ctx.lineTo(origin.x + vertices[2].x, origin.y + vertices[2].y);
-        ctx.lineTo(origin.x + vertices[3].x, origin.y + vertices[3].y);
-        ctx.lineTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.closePath();
-        ctx.fillStyle = this.#color;
-        ctx.fill();
 
-        // back face
-        ctx.moveTo(origin.x + vertices[4].x, origin.y + vertices[4].y);
-        ctx.lineTo(origin.x + vertices[5].x, origin.y + vertices[5].y);
-        ctx.lineTo(origin.x + vertices[6].x, origin.y + vertices[6].y);
-        ctx.lineTo(origin.x + vertices[7].x, origin.y + vertices[7].y);
-        ctx.lineTo(origin.x + vertices[4].x, origin.y + vertices[4].y);
-        ctx.closePath();
-        ctx.fillStyle = this.#color;
-        ctx.fill();
+        const sides = [
+            [0, 1, 2, 3, 0],
+            [4, 5, 6, 7, 4],
+            [3, 2, 6, 7, 3],
+            [0, 1, 5, 4, 0],
+            [0, 3, 7, 4, 0],
+            [1, 2, 6, 5, 1]
+        ];
 
-        // top face
-        ctx.moveTo(origin.x + vertices[3].x, origin.y + vertices[3].y);
-        ctx.lineTo(origin.x + vertices[2].x, origin.y + vertices[2].y);
-        ctx.lineTo(origin.x + vertices[6].x, origin.y + vertices[6].y);
-        ctx.lineTo(origin.x + vertices[7].x, origin.y + vertices[7].y);
-        ctx.lineTo(origin.x + vertices[3].x, origin.y + vertices[3].y);
-        ctx.closePath();
-        ctx.fillStyle = this.#color;
-        ctx.fill();
+        for (const side of sides) {
+            ctx.moveTo(origin.x + vertices[side[0]].x, origin.y + vertices[side[0]].y);
+            ctx.lineTo(origin.x + vertices[side[1]].x, origin.y + vertices[side[1]].y);
+            ctx.lineTo(origin.x + vertices[side[2]].x, origin.y + vertices[side[2]].y);
+            ctx.lineTo(origin.x + vertices[side[3]].x, origin.y + vertices[side[3]].y);
+            ctx.lineTo(origin.x + vertices[side[4]].x, origin.y + vertices[side[4]].y);
 
-        // bottom face
-        ctx.moveTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.lineTo(origin.x + vertices[1].x, origin.y + vertices[1].y);
-        ctx.lineTo(origin.x + vertices[5].x, origin.y + vertices[5].y);
-        ctx.lineTo(origin.x + vertices[4].x, origin.y + vertices[4].y);
-        ctx.lineTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.closePath();
-        ctx.fillStyle = this.#color;
-        ctx.fill();
-
-        // left face
-        ctx.moveTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.lineTo(origin.x + vertices[4].x, origin.y + vertices[4].y);
-        ctx.lineTo(origin.x + vertices[7].x, origin.y + vertices[7].y);
-        ctx.lineTo(origin.x + vertices[3].x, origin.y + vertices[3].y);
-        ctx.lineTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.closePath();
-        ctx.fillStyle = this.#color;
-        ctx.fill();
-
-        // right face
-        ctx.moveTo(origin.x + vertices[1].x, origin.y + vertices[1].y);
-        ctx.lineTo(origin.x + vertices[5].x, origin.y + vertices[5].y);
-        ctx.lineTo(origin.x + vertices[6].x, origin.y + vertices[6].y);
-        ctx.lineTo(origin.x + vertices[2].x, origin.y + vertices[2].y);
-        ctx.lineTo(origin.x + vertices[1].x, origin.y + vertices[1].y);
-        ctx.closePath();
-        ctx.fillStyle = this.#color;
-        ctx.fill();
+            ctx.fillStyle = this.#color;
+            ctx.fill();
+        }
 
         ctx.stroke();
+        ctx.closePath();
 
         this.setVisible(true);
 
         return this;
     }
 
-    addToClearQueue(vertices, origin) {
-        this.setVisible(false);
-        return;
-
-        // debug:
+    addToClearQueue(vertices, origin, ctx) {
+        
         this.#clearQueued.push({ vertices: vertices, origin: origin });
 
         while (this.#clearQueued.length > 1) {
-            this.#clear(this.#clearQueued[0].vertices, this.#clearQueued[0].origin);
+            this.#clear(this.#clearQueued[0].vertices, this.#clearQueued[0].origin, ctx);
             this.#clearQueued.shift();
         }
 
         this.setVisible(false);
     }
 
-    #clear(vertices, origin) {
-        const ctx = this._getCtx();
-        const margin = 10;
+    #clear(vertices, origin, ctx) {
+        const margin = 1; // Marge de 1 pixel pour effacer également le stroke
 
-        ctx.beginPath();
-        ctx.fillStyle = '#ffffff';
+        const xMin = Math.min(...vertices.map(v => origin.x + v.x)) - margin;
+        const xMax = Math.max(...vertices.map(v => origin.x + v.x)) + margin;
+        const yMin = Math.min(...vertices.map(v => origin.y + v.y)) - margin;
+        const yMax = Math.max(...vertices.map(v => origin.y + v.y)) + margin;
 
-        // front face
-        ctx.moveTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.lineTo(origin.x + vertices[1].x, origin.y + vertices[1].y);
-        ctx.lineTo(origin.x + vertices[2].x, origin.y + vertices[2].y);
-        ctx.lineTo(origin.x + vertices[3].x, origin.y + vertices[3].y);
-        ctx.lineTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.closePath();
-        ctx.fill();
-
-        // back face
-        ctx.moveTo(origin.x + vertices[4].x, origin.y + vertices[4].y);
-        ctx.lineTo(origin.x + vertices[5].x, origin.y + vertices[5].y);
-        ctx.lineTo(origin.x + vertices[6].x, origin.y + vertices[6].y);
-        ctx.lineTo(origin.x + vertices[7].x, origin.y + vertices[7].y);
-        ctx.lineTo(origin.x + vertices[4].x, origin.y + vertices[4].y);
-        ctx.closePath();
-        ctx.fill();
-
-        // top face
-        ctx.moveTo(origin.x + vertices[3].x, origin.y + vertices[3].y);
-        ctx.lineTo(origin.x + vertices[2].x, origin.y + vertices[2].y);
-        ctx.lineTo(origin.x + vertices[6].x, origin.y + vertices[6].y);
-        ctx.lineTo(origin.x + vertices[7].x, origin.y + vertices[7].y);
-        ctx.lineTo(origin.x + vertices[3].x, origin.y + vertices[3].y);
-        ctx.closePath();
-        ctx.fill();
-
-        // bottom face
-        ctx.moveTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.lineTo(origin.x + vertices[1].x, origin.y + vertices[1].y);
-        ctx.lineTo(origin.x + vertices[5].x, origin.y + vertices[5].y);
-        ctx.lineTo(origin.x + vertices[4].x, origin.y + vertices[4].y);
-        ctx.lineTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.closePath();
-        ctx.fill();
-
-        // left face
-        ctx.moveTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.lineTo(origin.x + vertices[4].x, origin.y + vertices[4].y);
-        ctx.lineTo(origin.x + vertices[7].x, origin.y + vertices[7].y);
-        ctx.lineTo(origin.x + vertices[3].x, origin.y + vertices[3].y);
-        ctx.lineTo(origin.x + vertices[0].x, origin.y + vertices[0].y);
-        ctx.closePath();
-        ctx.fill();
-
-        // right face
-        ctx.moveTo(origin.x + vertices[1].x, origin.y + vertices[1].y);
-        ctx.lineTo(origin.x + vertices[5].x, origin.y + vertices[5].y);
-        ctx.lineTo(origin.x + vertices[6].x, origin.y + vertices[6].y);
-        ctx.lineTo(origin.x + vertices[2].x, origin.y + vertices[2].y);
-        ctx.lineTo(origin.x + vertices[1].x, origin.y + vertices[1].y);
-        ctx.closePath();
-        ctx.fill();
-
-        // this.setVisible(false); // setVisible false inside clearQueue
+        ctx.clearRect(xMin, yMin, xMax - xMin, yMax - yMin);
 
         return this;
     }

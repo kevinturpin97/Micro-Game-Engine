@@ -78,11 +78,11 @@ class Controller {
   }
 
   #instantiate() {
-    const count = 100;
+    const count = 1;
 
     let sizeX, sizeY, sizeZ, posX, posY, posZ, rotX, rotY, rotZ;
 
-    sizeX = sizeY = sizeZ = 5;
+    sizeX = sizeY = sizeZ = 4;
     posX = posY = posZ = rotX = rotY = rotZ = 0;
 
     posX = (sizeX * sizeY * (sizeZ / 2));
@@ -101,7 +101,7 @@ class Controller {
 
       posX += (sizeX * sizeY * (sizeZ / 2));
 
-      if (i % 10 === 0) {
+      if (i % 25 === 0) {
         posX = (sizeX * sizeY * (sizeZ / 2));
         posY += (sizeY * sizeZ * (sizeX / 2));
       }

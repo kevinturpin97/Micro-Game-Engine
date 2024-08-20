@@ -15,21 +15,25 @@ class Renderer extends Watcher {
      * @param {number} deltaTime 
      */
     #render(timestamp = 0) {
-        const deltaTime = (timestamp - this.#lastTimestamp) / 1000;
-        this.#lastTimestamp = timestamp;
-
-        // limit the frame rate to 60 fps
-        if (deltaTime < (1 / 60)) {
-            this.#subscribers.forEach((fn) => {
-                fn(deltaTime);
+        const fps = 60;
+        const interval = 1000 / fps;
+        
+        const deltaTime = (timestamp - this.#lastTimestamp);
+    
+        if (deltaTime >= interval) {
+            this.#lastTimestamp = timestamp - (deltaTime % interval);
+    
+            this.#subscribers.forEach((subscriber) => {
+                subscriber.fn(deltaTime / 1000);
             });
         }
-
+        
         requestAnimationFrame(this.#render.bind(this));
     }
 
-    subscribe({ controller = (_) => { } }) {
-        this.#subscribers.push(controller);
+    subscribe({ controller = (_) => { }, debug = HTMLElement }) {
+        // this.#subscribers.push({ type: 'debug', el: debug });
+        this.#subscribers.push({ type: 'controller', fn: controller });
     }
 
     getContext() {
