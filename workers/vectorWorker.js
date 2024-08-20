@@ -11,7 +11,7 @@
      * @param {string} type
      * @param {Entity[]} entities 
      */
-    const update_render = (type = '', entities = []) => {
+    const update_render = (type = '', entities = [], worker = 0) => {
         switch (type) {
             case 'cubes':
                 const entitiesUpdated = entities.map((entity) => {
@@ -57,6 +57,7 @@
                 });
 
                 postMessage({
+                    worker: worker,
                     type: type,
                     action: 'update_render',
                     entities: entitiesUpdated
@@ -73,7 +74,7 @@
      * @param {string} type
      * @param {Entity[]} entities 
      */
-    const update_transform = (type = '', entities = []) => {
+    const update_transform = (type = '', entities = [], worker = 0) => {
         switch (type) {
             case 'cubes':
                 const entitiesUpdated = entities.map((entity) => {
@@ -115,6 +116,7 @@
                 });
 
                 postMessage({
+                    worker: worker,
                     type: type,
                     action: 'update_transform',
                     entities: entitiesUpdated
@@ -129,11 +131,12 @@
 
     onmessage = (event) => {
         const {
+            worker,
             type,
             action,
             entities
         } = event.data;
 
-        eval(action)(type, entities);
+        eval(action)(type, entities, worker);
     };
 })();

@@ -1,8 +1,8 @@
+import { ControllerManager } from "./controllerManager.js";
 import { Cube } from "./cube.js";
 import { Entity } from "./entity.js";
 
-class Controller {
-  #vectorWorker = Worker;
+class Controller extends ControllerManager {
   #entities = {
     cubes: []
   };
@@ -12,7 +12,7 @@ class Controller {
   #context = CanvasRenderingContext2D;
 
   constructor() {
-    this.#vectorWorker = new Worker('workers/vectorWorker.js');
+    super();
   }
 
   init() {
@@ -20,65 +20,77 @@ class Controller {
       throw new Error('Context not set');
     }
 
-    this.#vectorWorker.onmessage = (event) => {
-      const { type, action, entities } = event.data;
-      const needRender = {
-        cubes: []
-      };
+    const workers = this._getWorkers();
+    const workersAvailable = this._getWorkersAvailable();
 
-      for (const entity of entities) {
-        const { id, vertices, origin, position, rotation } = entity;
-        const entityToUpdate = this.#entities[type].find((entity) => entity.getId() === id);
+    for (let i = 0; i < workersAvailable; i++) {
+      workers[i].onmessage = (event) => {
+        const { type, action, entities, worker } = event.data;
 
-        if (!entityToUpdate) {
-          console.warn('Entity not found:', id);
+        if (worker !== i) { return; }
 
-          continue;
+        const needRender = {
+          cubes: []
+        };
+  
+        for (const entity of entities) {
+          const { id, vertices, origin, position, rotation } = entity;
+          const entityToUpdate = this.#entities[type].find((entity) => entity.getId() === id);
+  
+          if (!entityToUpdate) {
+            console.warn('Entity not found:', id);
+            // TODO: check if entity was moved on other worker
+  
+            continue;
+          }
+  
+          switch (action) {
+            case 'update_transform':
+              entityToUpdate.setPosition(position);
+              entityToUpdate.setRotation(rotation);
+  
+              needRender[type].push(entityToUpdate);
+              continue;
+  
+            case 'update_render':
+              // TODO: unique function for each entity type
+              entityToUpdate.draw(vertices, origin, this.#context);
+              continue;
+  
+            default:
+              continue;
+          }
         }
+  
+        if (needRender.cubes.length > 0) {
+          const cubeDatas = needRender.cubes
+            .map((entity) => {
 
-        switch (action) {
-          case 'update_transform':
-            entityToUpdate.setPosition(position);
-            entityToUpdate.setRotation(rotation);
-
-            needRender[type].push(entityToUpdate);
-            continue;
-
-          case 'update_render':
-            // TODO: unique function for each entity type
-            entityToUpdate.draw(vertices, origin, this.#context);
-            continue;
-
-          default:
-            continue;
-        }
-      }
-
-      if (needRender.cubes.length > 0) {
-        const cubeDatas = needRender.cubes
-          .map((entity) => {
-            return {
-              id: entity.getId(),
-              size: entity.getSize(),
-              position: entity.getPosition(),
-              rotation: entity.getRotation(),
-              origin: { x: 0, y: 0, z: 0 }
-            };
+              return {
+                id: entity.getId(),
+                size: entity.getSize(),
+                position: entity.getPosition(),
+                rotation: entity.getRotation(),
+                origin: { x: 0, y: 0, z: 0 }
+              };
+            });
+  
+          workers[i].postMessage({
+            worker: i,
+            type: 'cubes',
+            action: 'update_render',
+            entities: cubeDatas
           });
+        }
+      };
+    }
 
-        this.#vectorWorker.postMessage({
-          type: 'cubes',
-          action: 'update_render',
-          entities: cubeDatas
-        });
-      }
-    };
 
     this.#instantiate();
   }
 
   #instantiate() {
-    const count = 1;
+    const count = 100;
 
     let sizeX, sizeY, sizeZ, posX, posY, posZ, rotX, rotY, rotZ;
 
@@ -140,6 +152,16 @@ class Controller {
       entity.setId(this.#entities.cubes.length);
     }
 
+    let workerAvailable = this._getWorkersAvailable();
+
+    if (workerAvailable === 0) {
+      throw new Error('No worker available');
+    }
+
+    const workerId = this._subscribe();
+
+    entity.setWorkerId(workerId);
+
     this.#entities.cubes.push(entity);
 
     console.log('New entity:', entity.getId());
@@ -157,6 +179,7 @@ class Controller {
       throw new Error('Entity does not exist');
     }
 
+    this._unsubscribe(entity.getWorkerId());
     this.#deletedIds.cubes.push(entity.getId());
     this.#entities.cubes = this.#entities.cubes.filter((e) => e !== entity);
   }
@@ -170,54 +193,70 @@ class Controller {
 
   instantiate() {
     const cubes = this.#entities.cubes;
-    const cubeDatas = cubes
-      .map((entity) => {
-        if (!entity || entity.isInstantiated()) { return; }
+    let currentWorker = 0;
 
-        entity.instantiate();
+    while (currentWorker < this._getWorkersAvailable()) {
+      const worker = this._getWorker(currentWorker);
+      const cubeDatas = cubes
+        .filter((entity) => entity.getWorkerId() === currentWorker && !entity.isInstantiated())
+        .map((entity) => {
 
-        return {
-          id: entity.getId(),
-          size: entity.getSize(),
-          position: entity.getPosition(),
-          rotation: entity.getRotation(),
-          origin: { x: 0, y: 0, z: 0 }
-        };
-      })
-      .filter((entity) => entity);
+          entity.instantiate();
 
-    this.#vectorWorker.postMessage({
-      type: 'cubes',
-      action: 'update_render',
-      entities: cubeDatas
-    });
+          return {
+            id: entity.getId(),
+            size: entity.getSize(),
+            position: entity.getPosition(),
+            rotation: entity.getRotation(),
+            origin: { x: 0, y: 0, z: 0 }
+          };
+        })
+        .filter((entity) => entity);
+
+
+      worker.postMessage({
+        worker: currentWorker,
+        type: 'cubes',
+        action: 'update_render',
+        entities: cubeDatas
+      });
+
+      currentWorker++;
+    }
   }
 
   onUpdate(deltaTime) {
     const cubes = this.#entities.cubes;
-    const cubeDatas = cubes
-      .map((entity) => {
-        if (!entity || !entity.needUpdate()) { return; }
+    let currentWorker = 0;
 
-        return {
-          id: entity.getId(),
-          size: entity.getSize(),
-          position: entity.getPosition(),
-          rotation: entity.getRotation(),
-          velocity: entity.getVelocity(),
-          angular: entity.getAngular(),
-          deltaTime: deltaTime
-        };
-      })
-      .filter((entity) => entity);
+    while (currentWorker < this._getWorkersAvailable()) {
+      const worker = this._getWorker(currentWorker);
+      const cubeDatas = cubes
+        .filter((entity) => entity.getWorkerId() === currentWorker && entity.needUpdate())
+        .map((entity) => {
+          return {
+            id: entity.getId(),
+            size: entity.getSize(),
+            position: entity.getPosition(),
+            rotation: entity.getRotation(),
+            velocity: entity.getVelocity(),
+            angular: entity.getAngular(),
+            deltaTime: deltaTime
+          };
+        })
+        .filter((entity) => entity);
 
-    if (cubeDatas.length === 0) { return; }
+      if (cubeDatas.length === 0) { continue; }
 
-    this.#vectorWorker.postMessage({
-      type: 'cubes',
-      action: 'update_transform',
-      entities: cubeDatas
-    });
+      worker.postMessage({
+        worker: currentWorker,
+        type: 'cubes',
+        action: 'update_transform',
+        entities: cubeDatas
+      });
+
+      currentWorker++;
+    }
   }
 }
 

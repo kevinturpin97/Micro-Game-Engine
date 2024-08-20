@@ -44,6 +44,7 @@ class Entity {
     };
     #isVisible = false;
     #isInstantiated = false;
+    #workerId = 1;
 
     /**
      * @param {Vector3} size
@@ -222,6 +223,19 @@ class Entity {
     }
 
     /**
+     * @returns {Entity}
+     */
+    setWorkerId(workerId) {
+        if (typeof workerId !== 'number') {
+            throw new Error('Invalid worker ID');
+        }
+
+        this.#workerId = workerId;
+
+        return this;
+    }
+
+    /**
      * @returns {number|null}
      */
     getId() {
@@ -289,6 +303,13 @@ class Entity {
      */
     isInstantiated() {
         return this.#isInstantiated;
+    }
+
+    /**
+     * @returns {number}
+     */
+    getWorkerId() {
+        return this.#workerId;
     }
 
     needUpdate() {
