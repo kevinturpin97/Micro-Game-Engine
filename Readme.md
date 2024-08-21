@@ -2,5 +2,14 @@
 
 ## How to run
 
-Just open the `index.html` file in your browser and have fun :)
+<code>https://kevinturpin97.github.io/Micro-Game-Engine/</code>
+<br />
+<br />
+OR
+<br />
+<br />
+Clone the repo:
+
+```bash
 You can adjust nbrs of cubes to generate in Controller.#instantiate() (controller.js l.80)
+```

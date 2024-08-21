@@ -90,7 +90,7 @@ class Controller extends ControllerManager {
   }
 
   #instantiate() {
-    const count = 100;
+    const count = 200;
 
     let sizeX, sizeY, sizeZ, posX, posY, posZ, rotX, rotY, rotZ;
 
