@@ -2,7 +2,7 @@
 
 ## How to run
 
-<code>https://kevinturpin97.github.io/Micro-Game-Engine/</code>
+<code>[https://kevinturpin97.github.io/Micro-Game-Engine/](https://kevinturpin97.github.io/JS-Game-Engine-Base/)</code>
 <br />
 <br />
 OR
